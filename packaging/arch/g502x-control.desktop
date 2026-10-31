@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=G502 X Control
+Comment=Configure Logitech mouse DPI and buttons
+Exec=g502x-control
+Icon=input-mouse
+Terminal=false
+Categories=Settings;HardwareSettings;
+StartupNotify=true

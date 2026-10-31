@@ -1,0 +1,21 @@
+# Build from this directory with: makepkg -s
+pkgname=g502x-control
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Native Linux DPI and button configuration for Logitech G502 mice'
+arch=('any')
+url='https://github.com/DanielKociuba/g502x-control'
+license=('MIT')
+depends=('python' 'pyside6' 'python-dbus-next' 'python-evdev' 'libratbag')
+options=('!strip')
+source=('app.py' 'backend.py' 'LICENSE' 'g502x-control' 'g502x-control.desktop')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+# Local sources are copied from the checked-out release commit by build.sh.
+# GitHub Releases include a SHA256SUMS file for the resulting package.
+package() {
+  install -Dm644 app.py "$pkgdir/usr/share/g502x-control/app.py"
+  install -Dm644 backend.py "$pkgdir/usr/share/g502x-control/backend.py"
+  install -Dm755 g502x-control "$pkgdir/usr/bin/g502x-control"
+  install -Dm644 g502x-control.desktop "$pkgdir/usr/share/applications/g502x-control.desktop"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
