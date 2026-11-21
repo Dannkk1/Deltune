@@ -37,6 +37,43 @@ def mapping_variant(kind, value):
     return Variant('(uv)', [kind, Variant('a(uu)' if kind == 4 else 'u', value)])
 
 
+def copy_plan(source, target):
+    """Compute and validate every changed setting before staging any writes."""
+    if source['path'] == target['path'] or any(p.get('Disabled') for p in (source,target)):
+        raise ValueError('Choose two different enabled profiles.')
+    changes = []
+    def add(group, entry, key, value):
+        if entry.get(key) != value:
+            changes.append((group,entry['Index'],key,value))
+    for group in ('Buttons','Resolutions'):
+        lookup = {x['Index']:x for x in target[group]}
+        if set(lookup) != {x['Index'] for x in source[group]}:
+            raise ValueError('These profile layouts differ.')
+        for item in source[group]:
+            dest = lookup[item['Index']]
+            if group == 'Buttons':
+                mapping = item['Mapping']
+                if mapping != dest['Mapping'] and mapping[0] not in dest['ActionTypes']:
+                    raise ValueError('A source button action is unsupported in the destination.')
+                add(group,dest,'Mapping',mapping)
+            else:
+                value = item['Resolution']
+                if value != dest['Resolution'] and (type(value) != type(dest['Resolution']) or
+                        any(n not in dest['Resolutions'] for n in (value if isinstance(value,list) else [value]))):
+                    raise ValueError('A source DPI value is unsupported in the destination.')
+                add(group,dest,'Resolution',value)
+                if 'IsDisabled' in item:
+                    add(group,dest,'IsDisabled',item['IsDisabled'])
+                for key in ('IsDefault','IsActive'):
+                    if item.get(key):
+                        add(group,dest,key,True)
+    if 'ReportRate' in source:
+        add('Profile',target,'ReportRate',source['ReportRate'])
+    if not any(b['Mapping']==[1,1] for b in source['Buttons']):
+        raise ValueError('Source profile needs a left-click assignment.')
+    return changes
+
+
 class Backend:
     async def call(self, path, interface, member, signature='', body=None):
         reply = await asyncio.wait_for(self.bus.call(Message(destination=SERVICE,
@@ -123,8 +160,30 @@ class Backend:
             if p.get('Disabled'):
                 raise ValueError('This profile is disabled in the device.')
             await self.method(p['path'], 'Profile', 'SetActive')
+        elif op == 'copy':
+            source = next(x for x in d['Profiles'] if x['path']==request['source'])
+            changes = copy_plan(source,p)
+            if changes != request['changes'] or p != request['preview']:
+                raise ValueError('Profiles changed after preview. Refresh and preview the copy again.')
+            if not changes:
+                return devices
+            for group,index,key,value in changes:
+                entry = p if group=='Profile' else next(x for x in p[group] if x['Index']==index)
+                kind = {'Buttons':'Button','Resolutions':'Resolution','Profile':'Profile'}[group]
+                if key in ('IsDefault','IsActive'):
+                    await self.method(entry['path'],kind,'SetDefault' if key=='IsDefault' else 'SetActive')
+                else:
+                    if key=='Mapping':
+                        payload = mapping_variant(*value)
+                    elif key=='Resolution':
+                        payload = Variant('v',Variant('(uu)' if isinstance(value,list) else 'u',value))
+                    else:
+                        payload = Variant('b' if key=='IsDisabled' else 'u',value)
+                    await self.set(entry['path'],kind,key,payload)
         elif op == 'button':
             b = next(b for b in p['Buttons'] if b['path'] == request['target'])
+            if 'before' in request and b['Mapping'] != request['before']:
+                raise ValueError('Button assignment changed. Refresh before editing it again.')
             kind, value = request['mapping']
             if kind not in b['ActionTypes']:
                 raise ValueError('This action type is unsupported on this button.')
@@ -161,6 +220,8 @@ class Backend:
             ok = next(x for x in fp['Resolutions'] if x['path'] == r['path'])['Resolution'] == expected
         elif op == 'button':
             ok = next(x for x in fp['Buttons'] if x['path'] == b['path'])['Mapping'] == [kind, value]
+        elif op == 'copy':
+            ok = not copy_plan(source,fp)
         elif op == 'profile':
             ok = fp['IsActive']
         else:

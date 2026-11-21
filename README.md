@@ -1,15 +1,19 @@
 # G502 X Control
 
-A native Python / Qt 6 desktop app for Logitech G502-family mice exposed by libratbag. Dark interface with ice-blue accents. Built for DPI and button configuration on KDE Wayland or X11.
+A native Python / Qt 6 desktop app for Logitech G502-family mice exposed by libratbag. Black interface with purple accents. Built for DPI and button configuration on KDE Wayland or X11.
 
 ![G502 X Control interface](docs/screenshot.png)
 
 *Interface preview using sample device data; this is not a hardware-test result.*
 
-**Status: 0.1.2 preview.** Automated checks cover software behavior; physical
+**Status: 0.1.4 preview.** Automated checks cover software behavior; physical
 G502 X validation is still pending. This is an independent community app.
 
 ## Features
+
+- Click the wired mouse diagram to select a button, record a shortcut, and check its events in the input tester.
+- Undo the last assignment, nickname onboard slots locally, and preview changes before copying between enabled profiles.
+- See active and default DPI stages in the stage strip.
 
 - Edit supported DPI values and select the active DPI stage.
 - Change mouse-button actions and assign keyboard shortcuts.
@@ -30,7 +34,7 @@ G502 X validation is still pending. This is an independent community app.
 
 ## Install
 
-For a downloaded 0.1.2 Arch package, upgrade in place with `sudo pacman -U ~/Downloads/g502x-control-0.1.2-1-any.pkg.tar.zst`. Launch `/usr/bin/g502x-control` to open the packaged version. If an older per-user KDE launcher opens the source install, copy `/usr/share/applications/g502x-control.desktop` to `~/.local/share/applications/` and run `kbuildsycoca6 --noincremental`.
+For a downloaded 0.1.4 Arch package, upgrade in place with `sudo pacman -U ~/Downloads/g502x-control-0.1.4-1-any.pkg.tar.zst`. Launch `/usr/bin/g502x-control` to open the packaged version. If an older per-user KDE launcher opens the source install, copy `/usr/share/applications/g502x-control.desktop` to `~/.local/share/applications/` and run `kbuildsycoca6 --noincremental`.
 
 Download **Code → Download ZIP**, extract it, and open a terminal inside the extracted project folder. Run:
 

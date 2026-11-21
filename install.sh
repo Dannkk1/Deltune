@@ -8,7 +8,7 @@ sudo pacman -S --needed pyside6 python-dbus-next python-evdev libratbag
 sudo systemctl start ratbagd.service
 install_dir="$HOME/.local/share/g502x-control"
 mkdir -p "$install_dir" "$HOME/.local/share/applications"
-install -m 644 "$source_dir/app.py" "$source_dir/backend.py" "$install_dir/"
+install -m 644 "$source_dir/app.py" "$source_dir/backend.py" "$source_dir/controls.py" "$install_dir/"
 # Quote the executable path according to the Desktop Entry specification.
 python3 - "$install_dir" <<'PY'
 import pathlib, sys

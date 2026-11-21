@@ -15,8 +15,10 @@ class Fake(Backend):
     def __init__(self,fail=False): self.data=copy.deepcopy(D);self.bus=Bus();self.fail=fail;self.commits=0
     async def snapshot(self): return copy.deepcopy([self.data])
     def lookup(self,path):
-        p=self.data['Profiles'][0]
-        return next(x for x in [self.data,p]+p['Resolutions']+p['Buttons'] if x['path']==path)
+        entries = [self.data]
+        for profile in self.data['Profiles']:
+            entries.extend([profile, *profile['Resolutions'], *profile['Buttons']])
+        return next(x for x in entries if x['path']==path)
     async def props(self,path,kind): return copy.deepcopy(self.lookup(path))
     async def set(self,path,kind,name,value):
         self.lookup(path)[name]=plain(value);self.data['Profiles'][0]['IsDirty']=True
