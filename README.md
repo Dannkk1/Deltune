@@ -6,7 +6,7 @@ A native Python / Qt 6 desktop app for Logitech G502-family mice exposed by libr
 
 *Interface preview using sample device data; this is not a hardware-test result.*
 
-**Status: 0.1.0 preview.** Automated checks cover software behavior; physical
+**Status: 0.1.2 preview.** Automated checks cover software behavior; physical
 G502 X validation is still pending. This is an independent community app.
 
 ## Features
@@ -30,6 +30,8 @@ G502 X validation is still pending. This is an independent community app.
 
 ## Install
 
+For a downloaded 0.1.2 Arch package, upgrade in place with `sudo pacman -U ~/Downloads/g502x-control-0.1.2-1-any.pkg.tar.zst`. Launch `/usr/bin/g502x-control` to open the packaged version. If an older per-user KDE launcher opens the source install, copy `/usr/share/applications/g502x-control.desktop` to `~/.local/share/applications/` and run `kbuildsycoca6 --noincremental`.
+
 Download **Code → Download ZIP**, extract it, and open a terminal inside the extracted project folder. Run:
 
 ```bash
@@ -44,7 +46,7 @@ If your package mirrors are out of date, update CachyOS normally with `sudo pacm
 
 1. Select your mouse and onboard profile. Click **Activate profile** if necessary.
 2. In **Sensitivity**, choose a DPI stage, type or select a supported DPI, then **Save DPI**. Choose **Use this DPI stage** to make it active. XY values are set together.
-3. In **Buttons**, select a driver button index and a new action. Save the assignment. Keyboard shortcuts use Linux key names: `LEFTCTRL+C`, `LEFTALT+TAB`, `SPACE`, `F13`, `V`, etc. These are press/release shortcuts, not a held-key mode.
+3. In **Buttons**, select a physical control and a new action. Save the assignment. Keyboard shortcuts use Linux key names: `LEFTCTRL+C`, `LEFTALT+TAB`, `SPACE`, `F13`, `V`, etc. These are press/release shortcuts, not a held-key mode.
 4. Click **Refresh** after changing profiles with the mouse, reconnecting it, or using another tool. The app does not poll continuously.
 
 DPI, mouse button actions, DPI shift/cycling, profile cycling, scroll actions, and keyboard shortcuts are exposed where the driver advertises the action type. Individual special functions can still be rejected by the firmware; errors are shown instead of silently reporting success. The last left-click mapping is protected. Existing macros are preserved unless you explicitly replace their button assignment.
@@ -63,7 +65,7 @@ If `ratbagctl list` cannot see the mouse, this app cannot configure it either. U
 
 If a failed edit leaves pending settings in ratbagd, restart the service and Refresh before trying again. Driver-side edits and commits are not atomic; after an error inspect the refreshed state before proceeding. No automatic retry or factory reset is performed.
 
-Button numbers are zero-based driver indexes, not printed Logitech G numbers. Use the current assignment to identify each control. The free-spin wheel latch is mechanical and isn't remappable. This version doesn't include G-Shift layers, timed macro editing, auto-switching game profiles or RGB.
+On the wired G502 X, Quick select includes G6 (left aim paddle), G7 and G8. Assign F13, F14 or F15 to give each control its own keyboard binding. Other models use the button indexes reported by the driver. The free-spin wheel latch is mechanical and isn't remappable. This version doesn't include G-Shift layers, timed macro editing, auto-switching game profiles or RGB.
 
 ## Run from source
 

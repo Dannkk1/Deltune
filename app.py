@@ -11,6 +11,14 @@ from backend import Backend, shortcut
 SPECIAL = {1:'Double click', 2:'Wheel left', 3:'Wheel right', 4:'Wheel up', 5:'Wheel down',
            7:'Cycle DPI up', 8:'Cycle DPI down', 9:'DPI up', 10:'DPI down',
            11:'DPI shift', 12:'Default DPI', 13:'Cycle profile up', 14:'Cycle profile down'}
+# Physical slots for the corded G502 X (046d:c099), independent of saved actions.
+WIRED_G502X_BUTTONS = {
+    0: 'G1 · Left click', 1: 'G2 · Right click', 2: 'G3 · Wheel click',
+    3: 'G4 · Back thumb button', 5: 'G5 · Forward thumb button',
+    4: 'G6 · Aim paddle (DPI Shift)', 10: 'G7 · DPI down button', 9: 'G8 · DPI up button',
+    8: 'G9 · Profile button', 6: 'Wheel tilt left', 7: 'Wheel tilt right',
+}
+
 STYLE = '''
 QWidget { background:#10151f; color:#e7eef9; font-family:"Noto Sans"; font-size:14px; }
 QMainWindow { background:#10151f; }
@@ -85,13 +93,21 @@ class Window(QMainWindow):
         tabs.addTab(dpi,'Sensitivity')
         buttons = QWidget(); bl = QVBoxLayout(buttons)
         box = QGroupBox('Button assignments'); bf = QFormLayout(box)
-        self.button = QComboBox(); bf.addRow('Physical button index',self.button)
+        self.button = QComboBox(); bf.addRow('Physical control',self.button)
+        quick = QHBoxLayout()
+        self.quick_buttons = {}
+        for slot, name in [(4, 'G6 · Aim paddle'), (10, 'G7'), (9, 'G8')]:
+            pick = QPushButton(name)
+            pick.clicked.connect(lambda checked=False, slot=slot: self.select_slot(slot))
+            self.quick_buttons[slot] = pick
+            quick.addWidget(pick)
+        bf.addRow('Quick select', quick)
         self.current = label(''); bf.addRow('Current assignment',self.current)
         self.action = QComboBox(); bf.addRow('New assignment',self.action)
         self.keys = QLineEdit(); self.keys.setPlaceholderText('LEFTCTRL+C, F13, SPACE, LEFTSHIFT…'); bf.addRow('Keyboard shortcut',self.keys)
         bl.addWidget(box)
         self.save_button = QPushButton('Save button assignment'); self.save_button.setObjectName('primary'); self.save_button.clicked.connect(self.write_button); bl.addWidget(self.save_button)
-        bl.addWidget(label('Indexes come from the driver, not Logitech’s printed G numbers. Existing assignments help identify each button. The mechanical free-spin wheel latch is not a software control.',True)); bl.addStretch()
+        bl.addWidget(label('Select a control, choose its new assignment, then save. To reassign left click, first assign left click to a second button.',True)); bl.addStretch()
         tabs.addTab(buttons,'Buttons')
         layout.addWidget(self.controls,1)
         self.details = QPlainTextEdit(); self.details.setReadOnly(True); self.details.setMaximumHeight(115)
@@ -134,6 +150,11 @@ class Window(QMainWindow):
         if pp:
             for i in range(self.profile.count()):
                 if self.profile.itemData(i)['path']==pp: self.profile.setCurrentIndex(i)
+        if self.last_request and self.last_request['op'] == 'button':
+            for row in range(self.button.count()):
+                if self.button.itemData(row)['path'] == self.last_request['target']:
+                    self.button.setCurrentIndex(row)
+                    break
         self.controls.setEnabled(bool(result))
         self.status.setText(('Saved • driver readback matches' if self.last_request else 'Connected • settings read from your mouse') if result else 'No supported G502 detected')
         self.details.setPlainText('Driver connected. Changes are checked after each save.\nSelect a profile, then change its sensitivity or button assignments.\nRefresh after reconnecting the mouse or switching profiles with its buttons.' if result else 'Check that the mouse is connected and awake.\nRun ratbagctl list to check driver detection.\nWireless G502 X models may need a newer libratbag version; try configuring over a USB data cable first.\nUpdate CachyOS normally, restart ratbagd, then Refresh. No device IDs or permissions are modified by this app.')
@@ -143,7 +164,7 @@ class Window(QMainWindow):
         d = self.device.currentData()
         if d:
             for p in d['Profiles']:
-                self.profile.addItem(f"Profile {p['Index']+1}"+(' • active' if p['IsActive'] else '')+(' • disabled' if p.get('Disabled') else ''),p)
+                self.profile.addItem(f"Profile {p['Index']}"+(' • active' if p['IsActive'] else '')+(' • disabled' if p.get('Disabled') else ''),p)
             active = next((i for i,p in enumerate(d['Profiles']) if p['IsActive']),0); self.profile.setCurrentIndex(active)
         self.profile.blockSignals(False); self.show_profile()
 
@@ -155,10 +176,26 @@ class Window(QMainWindow):
             for r in p['Resolutions']:
                 self.stage.addItem(f"Stage {r['Index']+1} — {r['Resolution']} DPI"+(' • active' if r['IsActive'] else '')+(' • disabled' if r.get('IsDisabled') else ''),r)
             self.stage.setCurrentIndex(next((i for i,r in enumerate(p['Resolutions']) if r['IsActive']),0))
-            for b in p['Buttons']: self.button.addItem(f"Button {b['Index']} — {self.describe(b['Mapping'])}",b)
+            device = self.device.currentData()
+            wired = device.get('Model', '').startswith('usb:046d:c099:') or device['Name'] == 'Logitech G502 X'
+            names = WIRED_G502X_BUTTONS if wired else {}
+            order = {slot: position for position, slot in enumerate(names)}
+            for button in sorted(p['Buttons'], key=lambda b: order.get(b['Index'], len(order) + b['Index'])):
+                index = button['Index']
+                control = names.get(index, f'Driver button {index}')
+                self.button.addItem(f"{control} — {self.describe(button['Mapping'])}", button)
         self.stage.blockSignals(False); self.button.blockSignals(False)
         self.activate.setEnabled(bool(p) and not p.get('Disabled',False))
+        slots = {b['Index'] for b in p['Buttons']} if p and names else set()
+        for slot, pick in self.quick_buttons.items():
+            pick.setVisible(slot in slots)
         self.show_stage(); self.show_button()
+
+    def select_slot(self, slot):
+        for row in range(self.button.count()):
+            if self.button.itemData(row)['Index'] == slot:
+                self.button.setCurrentIndex(row)
+                return
 
     def show_stage(self):
         r = self.stage.currentData(); self.dpi.clear()
@@ -174,14 +211,24 @@ class Window(QMainWindow):
         if k==0:return 'Disabled'
         if k==1:return {1:'Left click',2:'Right click',3:'Middle click',4:'Back',5:'Forward'}.get(v,f'Mouse button {v}')
         if k==2:return SPECIAL.get(v-(1<<30),f'Special {v}')
+        for key in ('F13', 'F14', 'F15'):
+            events = shortcut(key)
+            if mapping in ([4, events], [3, events[0][1]]):
+                return key
         return f'Keyboard key {v}' if k==3 else 'Keyboard macro'
 
     def show_button(self):
         b = self.button.currentData(); self.action.clear(); self.keys.clear()
         self.current.setText(self.describe(b['Mapping']) if b else '')
         if b:
-            choices = [('Disabled',[0,0])]+[(self.describe([1,n]),[1,n]) for n in range(1,9)]
+            choices = [('Disabled',[0,0])]+[(self.describe([1,n]),[1,n]) for n in range(1,max(8, len(self.profile.currentData()['Buttons'])) + 1)]
             choices += [(name,[2,(1<<30)+n]) for n,name in SPECIAL.items()]
+            for key in ('F13', 'F14', 'F15'):
+                events = shortcut(key)
+                if 4 in b['ActionTypes']:
+                    choices.append((key, [4, events]))
+                elif 3 in b['ActionTypes']:
+                    choices.append((key, [3, events[0][1]]))
             choices += [('Keyboard shortcut…',[4,None])]
             for name,data in choices:
                 if data[0] in b['ActionTypes']: self.action.addItem(name,data)
@@ -205,7 +252,7 @@ class Window(QMainWindow):
     def write_button(self):
         try:
             mapping = self.action.currentData()
-            if mapping[0]==4: mapping=[4,shortcut(self.keys.text())]
+            if mapping == [4, None]: mapping = [4, shortcut(self.keys.text())]
             self.submit('button',target=self.button.currentData()['path'],mapping=mapping)
         except (ValueError,TypeError) as e: QMessageBox.warning(self,'Button assignment',str(e))
 

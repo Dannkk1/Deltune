@@ -143,7 +143,14 @@ class Backend:
             if resync.is_set():
                 raise RuntimeError('Mouse rejected the write; ratbagd resynchronized its settings.')
             profiles = [await self.props(x['path'], 'Profile') for x in d['Profiles']]
-            if not any(x.get('IsDirty', True) for x in profiles):
+            if not any('IsDirty' in x for x in profiles):
+                # Older services have no completion flag. Observe delayed failure signals.
+                try:
+                    await asyncio.wait_for(resync.wait(), 5)
+                except asyncio.TimeoutError:
+                    break
+                raise RuntimeError('Mouse rejected the write; ratbagd resynchronized its settings.')
+            if not any(x.get('IsDirty', False) for x in profiles):
                 break
         else:
             raise RuntimeError('Write did not finish within 10 seconds. Refresh before retrying.')

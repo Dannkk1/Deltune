@@ -1,10 +1,10 @@
 # Build from this directory with: makepkg -s
 pkgname=g502x-control
-pkgver=0.1.0
+pkgver=0.1.2
 pkgrel=1
 pkgdesc='Native Linux DPI and button configuration for Logitech G502 mice'
 arch=('any')
-url='https://github.com/DanielKociuba/g502x-control'
+url='https://github.com/Dannkk1/Deltune'
 license=('MIT')
 depends=('python' 'pyside6' 'python-dbus-next' 'python-evdev' 'libratbag')
 options=('!strip')
